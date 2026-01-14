@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>NextSure — Login</title>
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 flex items-center justify-center h-screen">
+<div class="w-full max-w-md bg-white p-6 rounded shadow">
+<h2 class="text-2xl font-semibold mb-4">NextSure — Login</h2>
+
+
+<div id="auth-msg" class="text-sm text-red-600 mb-2"></div>
+
+
+<!-- Email login -->
+<input id="email" class="border p-2 w-full mb-2" placeholder="Email" />
+<input id="password" type="password" class="border p-2 w-full mb-2" placeholder="Password" />
+<button onclick="emailSignIn(document.getElementById('email').value, document.getElementById('password').value)" class="w-full p-2 bg-blue-600 text-white rounded mb-3">Sign in with Email</button>
+
+
+<!-- Google -->
+<button onclick="googleSignIn()" class="w-full p-2 border rounded mb-3">Sign in with Google</button>
+
+
+<!-- Phone OTP -->
+<div class="mb-2">
+<input id="phone" class="border p-2 w-full mb-2" placeholder="+8801XXXXXXXXX" />
+<button onclick="phoneSendOTP(document.getElementById('phone').value)" class="w-full p-2 border rounded mb-2">Send OTP</button>
+<input id="otp" class="border p-2 w-full mb-2" placeholder="Enter OTP" />
+<button onclick="phoneVerifyOTP(document.getElementById('otp').value)" class="w-full p-2 border rounded">Verify OTP</button>
+</div>
+
+
+<div id="recaptcha-container"></div>
+
+
+<p class="mt-4 text-sm text-gray-500">Need an account? Use Email sign-up flow (code provided).</p>
+
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<!-- Load config and auth logic -->
+<script src="js/firebase-config.js"></script>
+<script src="js/auth.js"></script>
+
+</div>
+</body>
+</html>

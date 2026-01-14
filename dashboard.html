@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>NextSure — Admin Dashboard</title>
+
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<!-- jsPDF & html2canvas for PDF export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="css/style.css">
+
+<style>
+  body { background:#f8fafc; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial; }
+  .small { font-size:13px; color:#6b7280; }
+  .table-scroll { max-height:66vh; overflow:auto; }
+  pre.json { white-space:pre-wrap; word-break:break-word; font-size:13px; }
+
+  /* -------------------------------
+   STATUS ROW BACKGROUND COLORS
+   ------------------------------- */
+
+/* Pending Row */
+tr.status-pending {
+  background: #fbfeff !important;
+}
+
+/* Approved Row */
+tr.status-approved {
+  background: #05dd83d2 !important;
+}
+
+/* Rejected Row */
+tr.status-rejected {
+  background: #c443439d !important;
+}
+
+/* Hover effect override */
+tr.status-pending:hover,
+tr.status-approved:hover,
+tr.status-rejected:hover {
+  filter: brightness(0.97);
+}
+/* Make all order row text black */
+#tbody tr td {
+  color: #000000 !important;
+}
+
+/* Making text inside status badges black */
+#tbody tr td span {
+  color: #000000 !important;
+}
+
+/* DRAG SCROLL CURSOR STYLING */
+.table-scroll {
+  cursor: grab;
+  user-select: none;
+}
+.table-scroll.dragging {
+  cursor: grabbing;
+}
+
+
+
+</style>
+</head>
+<!-- Header -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand_logo">
+        <a href="index.html" class="brand"> <img src="./images/nextsurelogo.png" alt="logo">
+        </a>
+      </div>
+        <nav class="nav" id="mainNav">
+        <ul class="nav-list">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="#home">About</a></li>
+          <li class="has-submenu">
+            <a href="product.html">Products</a>
+            <ul class="submenu">
+              <li><a href="travel.html">Travel Insurance</a></li>
+              <li><a href="fire.html">Fire Insurance</a></li>
+              <li><a href="motor.html">Motor Insurance</a></li>
+              <li><a href="marine.html">Marine Insurance</a></li>
+            </ul>
+          </li>
+          <li><a href="#partners">Partners</a></li>
+          <li><a href="#contact">Contact</a></li>
+<button onclick="signOut()" class="px-4 py-2 border rounded">Sign out</button>
+        </ul>
+      </nav>
+        <button class="nav-toggle" id="navToggle">
+        <span class="hamburger"></span>
+      </button>
+    </div>
+    <div id="user-info" class="bg-white p-4 rounded shadow">
+Loading user...
+
+</div>
+  </header>
+<body class="p-6">
+
+<div class="max-w-[1400px] mx-auto">
+
+  <header class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-bold">NextSure — Admin Dashboard</h1>
+      <div class="small mt-1">Manage orders — view, edit, status, PDF, delete</div>
+    </div>
+    <div class="flex gap-3">
+      <button id="refreshBtn" class="px-4 py-2 bg-slate-100 rounded shadow">Refresh</button>
+      <a href="form.html" class="px-4 py-2 bg-indigo-600 text-white rounded shadow">New Order</a>
+    </div>
+  </header>
+
+
+  <!-- Utilities -->
+  <div class="flex gap-3 mt-4">
+    <button id="exportAll" class="px-4 py-2 bg-green-600 text-white rounded">Export All JSON</button>
+    <button id="downloadSelectedPDF" class="px-4 py-2 bg-indigo-600 text-white rounded">Download Selected PDF</button>
+    <button id="clearLocal" class="px-4 py-2 bg-red-100 text-red-700 rounded">Clear Local (NOT API)</button>
+  </div>
+
+</div>
+  <!-- Controls -->
+  <div class="bg-white p-4 rounded shadow mb-4 grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
+    <input id="searchInput" type="search" placeholder="Search Order ID / Name / Mobile / Destination..."
+           class="p-2 border rounded w-full md:col-span-2"/>
+
+    <div class="flex gap-2 items-center">
+      <select id="statusFilter" class="p-2 border rounded">
+        <option value="">All Status</option>
+        <option>Pending</option>
+        <option>Approved</option>
+        <option>Rejected</option>
+      </select>
+
+      <select id="pageSize" class="p-2 border rounded">
+        <option value="10">10 / page</option>
+        <option value="25">25 / page</option>
+        <option value="50">50 / page</option>
+        <option value="100">100 / page</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="bg-white rounded shadow overflow-hidden">
+    <div class="table-scroll">
+      <table class="min-w-full text-sm">
+        <thead class="bg-slate-50 sticky top-0 z-10">
+          <tr class="text-left text-xs text-slate-800">
+            <th class="p-2">No</th>
+            <th class="p-2">Date & Time</th>
+            <th class="p-2">Order ID</th>
+            <th class="p-2">Name</th>
+            <th class="p-2">Address</th>
+            <th class="p-2">Company</th>
+            <th class="p-2">Plan</th>
+            <th class="p-2">DOB</th>
+            <th class="p-2">Age Band</th>
+            <th class="p-2">Duration</th>
+            <th class="p-2">Destination</th>
+            <th class="p-2">Occupation</th>
+            <th class="p-2">Travel Date</th>
+            <th class="p-2">Mobile</th>
+            <th class="p-2">Email</th>
+            <th class="p-2">Multiplier</th>
+            <th class="p-2">Offer</th>
+            <th class="p-2">Total</th>
+            <th class="p-2">Status</th>
+            <th class="p-2">Action</th>
+          </tr>
+        </thead>
+        <tbody id="tbody" class="divide-y"></tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="flex items-center justify-between p-3 border-t bg-slate-50">
+      <div class="small text-slate-600" id="rowsInfo">—</div>
+      <div class="flex items-center gap-2">
+        <button id="prevPage" class="px-3 py-1 bg-white border rounded">Prev</button>
+        <div class="px-3 text-sm" id="currentPage">1</div>
+        <button id="nextPage" class="px-3 py-1 bg-white border rounded">Next</button>
+      </div>
+    </div>
+  </div>
+
+
+<!-- View / Edit Modal (hidden) -->
+<div id="modal" class="fixed inset-0 hidden items-center justify-center z-50">
+  <div class="absolute inset-0 bg-black/40"></div>
+  <div class="relative bg-white rounded-lg w-[95%] md:w-4/5 max-h-[90vh] overflow-auto p-6 z-60 shadow-lg">
+    <div class="flex items-center justify-between mb-3">
+      <h2 id="modalTitle" class="text-lg font-semibold">Order</h2>
+      <div class="flex gap-2">
+        <button id="pdfBtn" class="px-3 py-1 bg-slate-100 rounded">PDF</button>
+        <button id="closeModal" class="px-3 py-1 bg-red-100 text-red-700 rounded">Close</button>
+      </div>
+    </div>
+
+    <form id="editForm" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+
+      <!-- Left col -->
+      <div>
+        <label class="block small">Order ID</label>
+        <input id="f_orderId" name="orderId" readonly class="w-full p-2 border rounded bg-slate-50"/>
+        <label class="block small mt-2">Buyer Name</label>
+        <input id="f_customerName" name="customerName" class="w-full p-2 border rounded"/>
+        <label class="block small mt-2">Mobile</label>
+        <input id="f_contact" name="contact" class="w-full p-2 border rounded"/>
+        <label class="block small mt-2">Company</label>
+        <input id="f_company" name="company" class="w-full p-2 border rounded"/>
+        <label class="block small mt-2">Plan</label>
+        <input id="f_plan" name="plan" class="w-full p-2 border rounded"/>
+        <label class="block small mt-2">Total Premium (৳)</label>
+        <input id="f_total" name="total" class="w-full p-2 border rounded"/>
+      </div>
+
+      <!-- Right col -->
+      <div>
+        <label class="block small">DOB</label>
+        <input id="f_dob" name="dob" type="date" class="w-full p-2 border rounded"/>
+        <label class="block small mt-2">Age Band</label>
+        <input id="f_age" name="age" class="w-full p-2 border rounded"/>
+        <label class="block small mt-2">Duration</label>
+        <input id="f_duration" name="duration" class="w-full p-2 border rounded"/>
+        <label class="block small mt-2">Destination</label>
+        <input id="f_country" name="country" class="w-full p-2 border rounded"/>
+        <label class="block small mt-2">Email</label>
+        <input id="f_email" name="email" class="w-full p-2 border rounded"/>
+        <label class="block small mt-2">Occupation</label>
+        <input id="f_occupation" name="occupation" class="w-full p-2 border rounded"/>
+        <label class="block small mt-2">Travel Date</label>
+        <input id="f_travelDate" name="travelDate" type="date" class="w-full p-2 border rounded"/>
+      </div>
+
+      <!-- Full width fields -->
+      <div class="md:col-span-2">
+        <label class="block small mt-2">Delivery Address </label>
+        <textarea id="f_address" name="address" rows="3" class="w-full p-2 border rounded"></textarea>
+      </div>
+
+      <div class="md:col-span-2 flex gap-2 items-center">
+        <label class="small">Multiplier</label>
+        <input id="f_multiplier" name="multiplier" type="number" step="0.01" class="p-2 border rounded w-28"/>
+        <label class="small ml-2">Offer (%)</label>
+        <input id="f_offer" name="offer" type="number" class="p-2 border rounded w-28"/>
+        <label class="small ml-2">Status</label>
+        <select id="f_status" name="status" class="p-2 border rounded">
+          <option>Pending</option>
+          <option>Approved</option>
+          <option>Rejected</option>
+        </select>
+
+        <div class="ml-auto flex gap-2">
+          <button id="saveBtn" type="button" class="px-4 py-2 bg-green-600 text-white rounded">Save</button>
+          <button id="deleteBtn" type="button" class="px-4 py-2 bg-red-100 text-red-700 rounded">Delete</button>
+        </div>
+      </div>
+
+      <!-- Passport preview -->
+      <div class="md:col-span-2">
+        <label class="block small mb-1">Passport / Uploaded File</label>
+        <div id="passportWrap" class="flex items-center gap-4">
+          <img id="passportPreview" src="" alt="passport" class="w-28 h-20 object-contain border rounded hidden"/>
+          <a id="passportLink" href="#" target="_blank" class="text-sm text-indigo-600 hidden">Open file</a>
+          <div id="noPassport" class="small text-slate-500">No file</div>
+        </div>
+      </div>
+
+    </form>
+  </div>
+</div>
+<!-- Contact Section -->
+  <section class="contact-section" id="contact">
+   <div class="container">
+       <div class="contact_main">
+        <div class="contact_item">
+          <div class="contact_information">
+            <h2>NextSure</h2>
+            <p>NextSure Insurance provides trusted and comprehensive protection with personalized solutions, fast support, and reliable coverage for health, travel, Motor, fire, marine, and all types of insurance, ensuring complete peace of mind.</p>
+          </div>
+          <div class="contact_social">
+            <ul class="social_item">
+              <li><a href="https://www.facebook.com/Nextsure.xyz" target="_blank"><i class="fa-brands fa-facebook"></i></a></li>
+              <li><a href="https://www.instagram.com/" target="_blank"><i class="fa-brands fa-instagram"></i></a></li>
+              <li><a href="https://www.linkedin.com/company/nextsure-xyz/" target="_blank"><i class="fa-brands fa-linkedin-in"></i></a></li>
+              <li><a href="https://nextsure.xyz/" target="_blank"><i class="fa-solid fa-globe"></i></a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="contact_item">
+          <h2>Our Product</h2>
+          <div class="contact-info">
+            <ul>
+               <li><a href="travel.html">Travel Insurance</a></li>
+              <li><a href="fire.html">Fire Insurance</a></li>
+              <li><a href="motor.html">Motor Insurance</a></li>
+              <li><a href="marine.html">Marine Insurance</a></li>
+            </ul>
+          </div>
+        </div>
+         <div class="contact_item">
+          <h2>Contact Us</h2>
+          <div class="contact-info">
+            <p><a href="tel:+880 1851-008300">Phone: +880 1851-008300</a></p>
+            <p><strong>Email:</strong> <a href="mailto:nextsure.xyz@gmail.com">nextsure.xyz@gmail.com</a></p>
+            <p><strong>Address:</strong> Gulshan-1, Dhaka-1212, Bangladesh</p>
+          </div>
+        </div>
+    </div>
+   </div>
+  </section>
+<!-- Brevo Conversations {literal} -->
+  <script>
+      (function(d, w, c) {
+          w.BrevoConversationsID = '6929c29da21c3118e1081ed6';
+          w[c] = w[c] || function() {
+              (w[c].q = w[c].q || []).push(arguments);
+          };
+          var s = d.createElement('script');
+          s.async = true;
+          s.src = 'https://conversations-widget.brevo.com/brevo-conversations.js';
+          if (d.head) d.head.appendChild(s);
+      })(document, window, 'BrevoConversations');
+  </script>
+  <!-- /Brevo Conversations {/literal} -->
+
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="js/firebase-config.js"></script>
+<script src="js/auth.js"></script>
+<script src="login.html"></script>
+
+
+<script>
+// Protect page
+requireAuth('login.html');
+
+
+firebase.auth().onAuthStateChanged(function(user){
+if(user){
+document.getElementById('user-info').innerText = 'Signed in as: ' + (user.email || user.phoneNumber || user.uid);
+}
+});
+</script>
+
+
+
+  <!-- Footer -->
+  <footer>
+    <p>&copy; <span id="year"></span> <a href="index.html">NextSure</a> All rights reserved.</p>
+  </footer>
+<script src="js/Dashboard script.js"></script>
+<script src="https://kit.fontawesome.com/YOUR_KIT_CODE.js" crossorigin="anonymous"></script>
+  <script src="js/slide.js"></script>
+  <script src="js/main.js"></script>
+</body>
+<script>
+  // Set current year in footer
+  document.getElementById('year').textContent = new Date().getFullYear();
+</script>
+</body>
+</html>
